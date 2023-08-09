@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>気象庁 台風経路図（2001～2023年7月）</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <script src='https://unpkg.com/maplibre-gl@3.1.0/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.1.0/dist/maplibre-gl.css' rel='stylesheet' />
+    <script type="module" src="maplibre-gl-gsi-terrain-fast-png.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        var map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tile2.openstreetmap.jp/styles/osm-bright/style.json',
+            center: [130.894, 31.9431],
+            zoom: 8.53,
+            pitch: 60,
+            bearing: 0,
+            hash: true,
+            attributionControl: false
+        })
+
+        // ズーム・回転
+        map.addControl(new maplibregl.NavigationControl());
+
+        // フルスクリーンモードのオンオフ
+        map.addControl(new maplibregl.FullscreenControl());
+
+        // 現在位置表示
+        map.addControl(new maplibregl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: false
+            },
+            fitBoundsOptions: { maxZoom: 18 },
+            trackUserLocation: true,
+            showUserLocation: true
+        }));
+
+        // スケール表示
+        map.addControl(new maplibregl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        }));
+
+        // Attributionを折りたたみ表示
+        map.addControl(new maplibregl.AttributionControl({
+            compact: true,
+            customAttribution: '（<a href="https://twitter.com/syanseto" target="_blank">Twitter</a> | <a href="https://github.com/shi-works/jma-ame-24h-maplibre-gl-js" target="_blank">Github</a>） '
+        }));
+
+        // 3D地形コントロール
+        map.addControl(
+            new maplibregl.TerrainControl({
+                source: 'gsidem',
+                exaggeration: 1 // 標高を強調する倍率
+            })
+        );
+
+        map.on('load', function () {
+            // 標高タイルソース
+            map.addSource("gsidem", {
+                type: 'raster-dem',
+                tiles: [
+                    'gsidem://https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png',
+                ],
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html#dem" target="_blank">地理院タイル(標高タイル)</a>',
+                tileSize: 256
+            });
+
+            // map.setTerrain({ 'source': 'gsidem', 'exaggeration': 1 });
+
+            // 陰影起伏図ソース
+            map.addSource("hillshade", {
+                type: 'raster',
+                tiles: [
+                    'https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png',
+                ],
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html#hillshademap" target="_blank">地理院タイル(陰影起伏図)</a>',
+                tileSize: 256
+            });
+
+            // 陰影起伏図レイヤ
+            map.addLayer({
+                id: 'hillshade-tiles',
+                type: 'raster',
+                source: 'hillshade',
+                minzoom: 2,
+                maxzoom: 18,
+                paint: {
+                    'raster-opacity': 0.5
+                }
+            });
+
+            // 台風経路ラインソース
+            map.addSource("typhoon-paths", {
+                type: "geojson",
+                data: "./typhoon-position_converted_paths_2001-2023.geojson",
+                attribution: '<a href="https://www.data.jma.go.jp/yoho/typhoon/position_table/index.html" target="_blank">気象庁 台風位置表を加工して作成</a>',
+            });
+
+            // 台風経路ラインレイヤ
+            map.addLayer({
+                'id': 'typhoon-paths-lines-1',
+                'type': 'line',
+                'source': 'typhoon-paths',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': "rgba(0, 0, 152, 0.3)",
+                    'line-width': 15,
+                    'line-blur': 5
+                }
+            });
+
+            // 台風経路ラインレイヤ
+            map.addLayer({
+                'id': 'typhoon-paths-lines-2',
+                'type': 'line',
+                'source': 'typhoon-paths',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': "rgba(0, 0, 255, 0.3)",
+                    'line-width': 7.5,
+                    'line-blur': 2.5
+                }
+            });
+
+            // 台風経路ラインレイヤ
+            map.addLayer({
+                'id': 'typhoon-paths-lines-3',
+                'type': 'line',
+                'source': 'typhoon-paths',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': 'rgba(255, 255, 255, 1)',
+                    'line-width': 0.5
+                }
+            });
+
+            // 台風経路ラベルレイヤ
+            map.addLayer({
+                'id': 'typhoon-paths-labels',
+                'type': 'symbol',
+                'source': 'typhoon-paths',
+                'layout': {
+                    'text-field': ['get', '台風番号'],  // 台風番号をラベルとして表示
+                    'symbol-placement': 'line',  // ラベルをラインに沿って配置
+                    'text-size': 14  // テキストサイズを調整
+                },
+                'paint': {
+                    'text-color': 'black',
+                    'text-halo-blur': 1,
+                    'text-halo-color': 'rgba(255, 255, 255, 1)',
+                    'text-halo-width': 2
+                }
+            });
+
+            // 台風位置ポイントソース
+            map.addSource("typhoon-position", {
+                type: "geojson",
+                data: "./typhoon-position_converted_2001-2023.geojson",
+                attribution: '<a href="https://www.data.jma.go.jp/yoho/typhoon/position_table/index.html" target="_blank">気象庁 台風位置表を加工して作成</a>',
+            });
+
+            // 台風位置ポイントレイヤ
+            map.addLayer({
+                'id': 'typhoon-position-points',
+                'type': 'circle',
+                'source': 'typhoon-position',
+                minzoom: 1,
+                maxzoom: 23,
+                'paint': {
+                    'circle-radius': [
+                        'interpolate',
+                        ['linear'],
+                        ['to-number', ['get', '中心気圧']],
+                        885, 100, // 885hPaのときの円の半径は100
+                        1018, 5  // 1018hPaのときの円の半径は5
+                    ],
+                    'circle-color': 'blue',
+                    'circle-opacity': 0.1,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': 'red'
+                },
+            });
+
+            // 台風位置ラベルレイヤ
+            map.addLayer({
+                id: 'typhoon-position-label',
+                type: 'symbol',
+                source: 'typhoon-position',
+                minzoom: 1,
+                maxzoom: 23,
+                layout: {
+                    'text-field': ['concat', ['get', '中心気圧'], "hPa"],
+                    'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                    'text-size': 14,
+                    'text-offset': [0, -2],
+                    'text-allow-overlap': false,
+                    'text-ignore-placement': false,
+                    'text-max-width': 20  // テキストが折り返される前の最大幅を設定
+                },
+                paint: {
+                    'text-color': 'rgba(255, 0, 0, 1)',
+                    'text-halo-blur': 1,
+                    'text-halo-color': 'rgba(255, 255, 255, 1)',
+                    'text-halo-width': 2
+                }
+            });
+
+            // レイヤを非表示
+            map.setLayoutProperty('typhoon-position-points', 'visibility', 'none');
+            map.setLayoutProperty('typhoon-position-label', 'visibility', 'none');
+
+        });
+
+        // 台風経路ラインのイベントリスナーを設定
+        map.on('click', 'typhoon-paths-lines-1', function (e) {
+
+            // クリックされたラインの「台風番号」を取得（文字列として）
+            var typhoonNumber = e.features[0].properties['台風番号'];
+            console.log('台風番号: ' + typhoonNumber);
+
+            // 台風経路ラインレイヤ表示
+            // クリックされたラインのみのフィルタを設定してスタイルを変更
+            map.setFilter('typhoon-paths-lines-1', ['==', ['get', '台風番号'], typhoonNumber]);
+            map.setFilter('typhoon-paths-lines-2', ['==', ['get', '台風番号'], typhoonNumber]);
+            map.setFilter('typhoon-paths-lines-3', ['==', ['get', '台風番号'], typhoonNumber]);
+            map.setPaintProperty('typhoon-paths-lines-1', 'line-color', 'rgba(255, 153, 153, 0.3)');
+            map.setPaintProperty('typhoon-paths-lines-2', 'line-color', 'rgba(255, 0, 0, 0.3)');
+            map.setPaintProperty('typhoon-paths-lines-3', 'line-color', 'rgba(255, 255, 255, 1)');
+
+            // 台風経路ラベルレイヤ表示
+            map.setFilter('typhoon-paths-labels', ['==', ['get', '台風番号'], typhoonNumber]);
+
+            // 台風位置ポイントレイヤを表示
+            map.setLayoutProperty('typhoon-position-points', 'visibility', 'visible');
+            map.setFilter('typhoon-position-points', ['==', ['get', '台風番号'], typhoonNumber]);
+            map.setPaintProperty('typhoon-position-points', 'circle-opacity', 0.2);
+            map.setPaintProperty('typhoon-position-points', 'circle-color', 'red');
+
+            // 台風位置ラベルレイヤを表示
+            map.setLayoutProperty('typhoon-position-label', 'visibility', 'visible');
+            map.setFilter('typhoon-position-label', ['==', ['get', '台風番号'], typhoonNumber]);
+
+        });
+
+        // 他の場所がクリックされたときのイベントリスナー
+        map.on('click', function (e) {
+            // クリックされた位置の上にあるすべてのレイヤーの特性を取得
+            var layers = map.queryRenderedFeatures(e.point);
+
+            // クリックされた位置に 'typhoon-paths-lines-1' レイヤーがない場合のみ、以下の操作を行う
+            if (!layers.some(feature => feature.layer.id === 'typhoon-paths-lines-1')) {
+                // フィルタを解除して全てのポイントとラインを再表示
+                map.setFilter('typhoon-paths-lines-1', null);
+                map.setFilter('typhoon-paths-lines-2', null);
+                map.setFilter('typhoon-paths-lines-3', null);
+                map.setFilter('typhoon-paths-labels', null);
+                map.setFilter('typhoon-position-points', null);
+                map.setFilter('typhoon-position-label', null);
+
+                // レイヤを非表示
+                map.setLayoutProperty('typhoon-position-points', 'visibility', 'none');
+                map.setLayoutProperty('typhoon-position-label', 'visibility', 'none');
+
+                // スタイルを元に戻す
+                map.setPaintProperty('typhoon-paths-lines-1', 'line-color', 'rgba(0, 0, 152, 0.5)');
+                map.setPaintProperty('typhoon-paths-lines-2', 'line-color', 'rgba(0, 0, 255, 0.5)');
+                map.setPaintProperty('typhoon-paths-lines-3', 'line-color', 'rgba(255, 255, 255, 1)');
+            }
+        });
+    </script>
+
+</body>
+
+</html>
