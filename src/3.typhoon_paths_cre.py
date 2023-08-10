@@ -1,8 +1,9 @@
 import pandas as pd
 import json
 
-# CSVファイルからデータを読み込む
-data = pd.read_csv("typhoon-position_converted_2001-2023.csv")
+# CSVファイルからデータを読み込む（'台風番号'と'台風名'を文字列として読み込む）
+data = pd.read_csv("typhoon-position_converted_2001-2023.csv",
+                   dtype={'台風番号': str, '台風名': str})
 
 # GeoJSONオブジェクトを初期化
 geojson = {
@@ -18,7 +19,7 @@ for (num, name), group in grouped:
     line = {
         "type": "Feature",
         "properties": {
-            "台風番号": str(num),  # 台風番号を文字列に変換
+            "台風番号": num,  # すでに文字列として読み込んでいるので、変換は不要
             "台風名": name
         },
         "geometry": {
