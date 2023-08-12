@@ -25,6 +25,10 @@
 
 <body>
     <div id="map"></div>
+    <div id="typhoon-info"
+        style="position: absolute; top: 10px; left: 10px; background-color: rgba(255, 255, 255, 0.8); padding: 10px; font-size: 24px; border-radius: 5px; display: none; z-index: 10;">
+        台風情報
+    </div>
     <script>
         var map = new maplibregl.Map({
             container: 'map',
@@ -217,7 +221,12 @@
                 minzoom: 1,
                 maxzoom: 23,
                 layout: {
-                    'text-field': ['concat', ['get', '中心気圧'], "hPa"],
+                    'text-field': [
+                        'concat',
+                        ['get', '中心気圧'], "hPa / ",
+                        // ノットを秒速に変換し、少数第一位までの値を取得
+                        ['to-string', ['/', ['round', ['*', ['to-number', ['get', '最大風速']], 0.514444 * 10]], 10]], " m/s"
+                    ],
                     'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
                     'text-size': 12,
                     'text-offset': [0, -3],
@@ -232,6 +241,7 @@
                     'text-halo-width': 2
                 }
             });
+
 
             // レイヤを非表示
             map.setLayoutProperty('typhoon-position-points', 'visibility', 'none');
@@ -268,6 +278,15 @@
             map.setLayoutProperty('typhoon-position-label', 'visibility', 'visible');
             map.setFilter('typhoon-position-label', ['==', ['get', '台風番号'], typhoonNumber]);
 
+            // 年と台風の番号に分解
+            var year = "20" + typhoonNumber.substring(0, 2);
+            var number = parseInt(typhoonNumber.substring(2));
+
+            // 台風情報を表示
+            var typhoonInfoDiv = document.getElementById('typhoon-info');
+            typhoonInfoDiv.innerHTML = year + "年台風" + number + "号";
+            typhoonInfoDiv.style.display = "block";
+
         });
 
         // 他の場所がクリックされたときのイベントリスナー
@@ -293,6 +312,11 @@
                 map.setPaintProperty('typhoon-paths-lines-1', 'line-color', 'rgba(0, 0, 152, 0.5)');
                 map.setPaintProperty('typhoon-paths-lines-2', 'line-color', 'rgba(0, 0, 255, 0.5)');
                 map.setPaintProperty('typhoon-paths-lines-3', 'line-color', 'rgba(255, 255, 255, 1)');
+
+                // 台風情報を非表示にする
+                var typhoonInfoDiv = document.getElementById('typhoon-info');
+                typhoonInfoDiv.style.display = "none";
+
             }
         });
     </script>
